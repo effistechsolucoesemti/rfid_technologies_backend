@@ -1,5 +1,5 @@
 import { database } from "../../services/firebase.js";
-import { get, onValue, ref, off } from "@firebase/database";
+import { get, onValue, ref } from "@firebase/database";
 
 const FetchAll = (request, response, next) => {
   console.log("Fetch Product Method");
