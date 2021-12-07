@@ -4,7 +4,7 @@ import { updateProductQuantityByRFidTag } from "../../controllers/products/updat
 const updateProductQuantityByRFidTagRoute = Router();
 
 updateProductQuantityByRFidTagRoute.put(
-  "/products/updateQuantityByRFidTag/:product_key",
+  "/products/updateQuantityByRFidTag/",
   updateProductQuantityByRFidTag
 );
 

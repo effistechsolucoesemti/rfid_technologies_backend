@@ -126,6 +126,8 @@ export const UpdateProduct = async (request, response) => {
 };
 
 export const updateProductQuantityByRFidTag = (request, response) => {
+  console.log("Update Product Quantity By RFid Tag Method");
+
   const { id_token, rfid_tag, quantity } = request.body;
 
   try {
