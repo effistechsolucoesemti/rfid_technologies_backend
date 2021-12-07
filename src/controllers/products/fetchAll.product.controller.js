@@ -6,8 +6,6 @@ const FetchAll = (request, response, next) => {
 
   const id_token = request.params.id_token;
 
-  console.log({ id_token });
-
   const usersRef = ref(database, "users/");
 
   try {
