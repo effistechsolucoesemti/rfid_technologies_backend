@@ -1,9 +1,17 @@
 import { database } from "../../services/firebase.js";
-import { ref, update, get } from "@firebase/database";
+import {
+  ref,
+  update,
+  get,
+  query,
+  orderByValue,
+  orderByKey,
+  child,
+} from "@firebase/database";
 
 import { handleEmptyProductsFieldsVerification } from "../../utils/controller/emptyFieldsVerification.js";
 
-const UpdateProduct = async (request, response) => {
+export const UpdateProduct = async (request, response) => {
   console.log("Update Product Method");
   const product_key = request.params.product_key;
   const {
@@ -46,10 +54,23 @@ const UpdateProduct = async (request, response) => {
                 const productKey = product.key;
                 const productData = product.val();
 
+                console.log({
+                  productKey,
+                  product_key,
+                  productData,
+                  ref: product.ref.toString().substring(61),
+                  child: product
+                    .child(product.ref.toString().substring(61))
+                    .val(),
+                  // hasChild: product.hasChild(),
+                  // hasChildren: product.hasChildren(),
+                });
+
                 if (
                   productData.internal_number === internal_number &&
                   internal_number !== current_internal_number
                 ) {
+                  //Retorna true
                   return get(
                     ref(
                       database,
@@ -59,12 +80,10 @@ const UpdateProduct = async (request, response) => {
                 }
               });
 
-              console.log({ prodValOf: productResult.valueOf() });
-
-              if (productResult) {
-                response.status(400).send({
+              if (!productResult) {
+                return response.status(400).send({
                   status: "failed",
-                  message: "Product already registered!.",
+                  message: "Product already registered!",
                 });
               }
 
@@ -106,4 +125,59 @@ const UpdateProduct = async (request, response) => {
   }
 };
 
-export default UpdateProduct;
+export const updateProductQuantityByRFidTag = (request, response) => {
+  const { id_token, rfid_tag, quantity } = request.body;
+
+  try {
+    const usersRef = ref(database, "users/");
+
+    get(usersRef)
+      .then((snapshot) => {
+        snapshot.forEach((childSnapshot) => {
+          const userKey = childSnapshot.key;
+          const userData = childSnapshot.val();
+
+          if (userData.id_token === id_token) {
+            return get(ref(database, `users/${userKey}/table_of_products`))
+              .then((product) => {
+                const productData = product.val();
+
+                Object.entries(productData).forEach((element) => {
+                  if (element[1].rfid_tag === rfid_tag) {
+                    update(
+                      ref(
+                        database,
+                        `users/${userKey}/table_of_products/${element[0]}`
+                      ),
+                      { quantity }
+                    )
+                      .then(() => {
+                        return response.status(200).send({
+                          status: "success",
+                          message: `Quantity of product of Rfid: ${rfid_tag} was updated!`,
+                        });
+                      })
+                      .catch((error) => {
+                        console.log({ error });
+
+                        return response.status(400).json({
+                          status: "failed",
+                          message: `Was not possible to update product!`,
+                        });
+                      });
+                  }
+                });
+              })
+              .catch((error) => {
+                console.log({ error });
+              });
+          }
+        });
+      })
+      .catch((error) => {
+        console.log({ error });
+      });
+  } catch (error) {
+    console.log({ error });
+  }
+};

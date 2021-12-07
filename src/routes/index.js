@@ -15,6 +15,7 @@ import registerProductRoute from "./products/register.product.js";
 import fetchAllProductsRoute from "./products/fetchAll.product.js";
 import deleteProductRoute from "./products/delete.product.js";
 import updateProductRoute from "./products/update.product.js";
+import updateProductQuantityByRFidTagRoute from "./products/updateQuantityByRFidTag.product.js";
 
 routes.use(
   welcomeRoute,
@@ -24,7 +25,8 @@ routes.use(
   registerProductRoute,
   fetchAllProductsRoute,
   deleteProductRoute,
-  updateProductRoute
+  updateProductRoute,
+  updateProductQuantityByRFidTagRoute
 );
 
 export default routes;

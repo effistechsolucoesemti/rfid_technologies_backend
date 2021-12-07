@@ -3,6 +3,6 @@ import FetchAllProducts from "../../controllers/products/fetchAll.product.contro
 
 const fetchAllProductsRoute = Router();
 
-fetchAllProductsRoute.post("/products/all", FetchAllProducts);
+fetchAllProductsRoute.get("/:id_token/products/all", FetchAllProducts);
 
 export default fetchAllProductsRoute;
