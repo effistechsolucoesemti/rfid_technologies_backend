@@ -23,31 +23,31 @@ export const handleEmptyProductsFieldsVerification = (
 ) => {
   if (!id_token) {
     return response
-      .status(400)
+      .status(204)
       .send({ status: "failed", message: "Id Token field empty" });
   }
 
   if (!product_name) {
     return response
-      .status(400)
+      .status(204)
       .send({ status: "failed", message: "Product Name field empty" });
   }
 
   if (!internal_number) {
     return response
-      .status(400)
+      .status(204)
       .send({ status: "failed", message: "Internal Number field empty" });
   }
 
   if (!rfid_tag) {
     return response
-      .status(400)
+      .status(204)
       .send({ status: "failed", message: "RFid Tag field empty" });
   }
 
   if (!quantity) {
     return response
-      .status(400)
+      .status(204)
       .send({ status: "failed", message: "Quantity field empty" });
   }
 

@@ -55,6 +55,12 @@ const RegisterProduct = async (request, response) => {
                   }
                 );
 
+                push(ref(database, `users/${userKey}/table_of_logs`), {
+                  date: String(new Date().toISOString()),
+                  operation: "added",
+                  message: `Product ${product_name} was added!`,
+                });
+
                 if (registerProduct) {
                   console.log({
                     message: "Creating new table and registering product",
@@ -87,6 +93,12 @@ const RegisterProduct = async (request, response) => {
                 product_name,
                 quantity,
                 ...remainder_attributes,
+              });
+
+              push(ref(database, `users/${userKey}/table_of_logs`), {
+                date: String(new Date().toISOString()),
+                operation: "added",
+                message: `Product ${product_name} was added!`,
               });
               return response.status(201).end();
               // .send({ message: "Product registered successfully." });

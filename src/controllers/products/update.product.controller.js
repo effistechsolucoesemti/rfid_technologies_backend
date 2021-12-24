@@ -3,6 +3,7 @@ import {
   ref,
   update,
   get,
+  push,
   query,
   orderByValue,
   orderByKey,
@@ -50,42 +51,64 @@ export const UpdateProduct = async (request, response) => {
             ref(database, `users/${userKey}/table_of_products/`)
           )
             .then((results) => {
+              //Verify if is itself
+              if (internal_number === current_internal_number) {
+                // //Register a new Log
+                push(ref(database, `users/${userKey}/table_of_logs`), {
+                  date: String(new Date().toISOString()),
+                  operation: "updated",
+                  message: `Product ${product_name} was updated!`,
+                });
+
+                return update(
+                  ref(
+                    database,
+                    `/users/${userKey}/table_of_products/${product_key}`
+                  ),
+                  {
+                    user_token: id_token,
+                    rfid_tag,
+                    internal_number,
+                    product_name,
+                    quantity,
+                    ...remainder_attributes,
+                  }
+                )
+                  .then(() => {
+                    return response.status(200).json({
+                      status: "success",
+                      message: `Product ${product_name} was updated!`,
+                    });
+                  })
+                  .catch((error) => {
+                    console.log({ error });
+                    throw new Error(error);
+                  });
+              }
+
               const productResult = results.forEach((product) => {
                 const productKey = product.key;
                 const productData = product.val();
 
-                console.log({
-                  productKey,
-                  product_key,
-                  productData,
-                  ref: product.ref.toString().substring(61),
-                  child: product
-                    .child(product.ref.toString().substring(61))
-                    .val(),
-                  // hasChild: product.hasChild(),
-                  // hasChildren: product.hasChildren(),
-                });
-
-                if (
-                  productData.internal_number === internal_number &&
-                  internal_number !== current_internal_number
-                ) {
-                  //Retorna true
-                  return get(
-                    ref(
-                      database,
-                      `/users/${userKey}/table_of_products/${product_key}`
-                    )
-                  );
+                //Verify if another product is registered and send error message
+                if (productData.internal_number === internal_number) {
+                  return false;
                 }
               });
 
               if (!productResult) {
                 return response.status(400).send({
                   status: "failed",
-                  message: "Product already registered!",
+                  message: "Another product is already registered!",
                 });
               }
+
+              //Register a new Log
+              push(ref(database, `users/${userKey}/table_of_logs`), {
+                date: String(new Date().toISOString()),
+                operation: "updated",
+                message: `Product ${product_name} was updated!`,
+              });
 
               return update(
                 ref(
@@ -100,15 +123,28 @@ export const UpdateProduct = async (request, response) => {
                   quantity,
                   ...remainder_attributes,
                 }
-              ).then(() => {
-                response.status(200).json({
-                  status: "success",
-                  message: `Product ${product_name} was updated!`,
+              )
+                .then(() => {
+                  return response.status(200).json({
+                    status: "success",
+                    message: `Product ${product_name} was updated!`,
+                  });
+                })
+                .catch((error) => {
+                  console.log({ error });
+                  throw new Error(error);
                 });
-              });
+
+              // if (!productResult) {
+              //   return response.status(400).send({
+              //     status: "failed",
+              //     message: "Another product is already registered!",
+              //   });
+              // }
             })
             .catch((error) => {
               console.log({ error });
+              throw new Error(error);
             });
 
           if (!fetchInternalNumber) {
