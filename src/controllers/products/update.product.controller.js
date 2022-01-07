@@ -190,12 +190,7 @@ export const updateProductQuantityByRFidTag = (request, response) => {
 
                 Object.entries(productData).forEach((element) => {
                   if (element[1].rfid_tag === rfid_tag) {
-                    //Register a new Log
-                    push(ref(database, `users/${userKey}/table_of_logs`), {
-                      date: String(new Date().toISOString()),
-                      operation: "updated",
-                      message: `Product ${product_name} was updated!`,
-                    });
+                    let productName = element[1].product_name;
 
                     update(
                       ref(
@@ -218,6 +213,13 @@ export const updateProductQuantityByRFidTag = (request, response) => {
                           message: `Was not possible to update product!`,
                         });
                       });
+
+                    //Register a new Log
+                    push(ref(database, `users/${userKey}/table_of_logs`), {
+                      date: String(new Date().toISOString()),
+                      operation: "updated",
+                      message: `Product ${productName} was updated!`,
+                    });
                   }
                 });
               })
