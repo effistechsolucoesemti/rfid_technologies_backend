@@ -164,7 +164,15 @@ export const UpdateProduct = async (request, response) => {
 export const updateProductQuantityByRFidTag = (request, response) => {
   console.log("CALLING UPDATE PRODUCT QUANTITY BY RFID METHOD");
 
-  const { id_token, rfid_tag, quantity } = request.body;
+  const {
+    id_token,
+    rfid_tag,
+    internal_number,
+    current_internal_number,
+    product_name,
+    quantity,
+    ...remainder_attributes
+  } = request.body;
 
   try {
     const usersRef = ref(database, "users/");
