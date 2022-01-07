@@ -13,7 +13,8 @@ import {
 import { handleEmptyProductsFieldsVerification } from "../../utils/controller/emptyFieldsVerification.js";
 
 export const UpdateProduct = async (request, response) => {
-  console.log("Update Product Method");
+  console.log("CALLING UPDATE PRODUCT METHOD");
+
   const product_key = request.params.product_key;
   const {
     id_token,
@@ -38,10 +39,9 @@ export const UpdateProduct = async (request, response) => {
     if (emptyFields) {
       return;
     }
+    console.log({ internal_number, current_internal_number });
 
-    const usersRef = ref(database, "users/");
-
-    return await get(usersRef).then((snapshot) => {
+    return await get(ref(database, "users/")).then((snapshot) => {
       snapshot.forEach((childSnapshot) => {
         const userKey = childSnapshot.key;
         const userData = childSnapshot.val();
@@ -53,7 +53,7 @@ export const UpdateProduct = async (request, response) => {
             .then((results) => {
               //Verify if is itself
               if (internal_number === current_internal_number) {
-                // //Register a new Log
+                //Register a new Log
                 push(ref(database, `users/${userKey}/table_of_logs`), {
                   date: String(new Date().toISOString()),
                   operation: "updated",
@@ -162,7 +162,7 @@ export const UpdateProduct = async (request, response) => {
 };
 
 export const updateProductQuantityByRFidTag = (request, response) => {
-  console.log("Update Product Quantity By RFid Tag Method");
+  console.log("CALLING UPDATE PRODUCT QUANTITY BY RFID METHOD");
 
   const { id_token, rfid_tag, quantity } = request.body;
 
@@ -182,6 +182,13 @@ export const updateProductQuantityByRFidTag = (request, response) => {
 
                 Object.entries(productData).forEach((element) => {
                   if (element[1].rfid_tag === rfid_tag) {
+                    //Register a new Log
+                    push(ref(database, `users/${userKey}/table_of_logs`), {
+                      date: String(new Date().toISOString()),
+                      operation: "updated",
+                      message: `Product ${product_name} was updated!`,
+                    });
+
                     update(
                       ref(
                         database,
