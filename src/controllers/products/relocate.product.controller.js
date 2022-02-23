@@ -236,9 +236,7 @@ const RelocateProduct = async (request, response) => {
                 },
               },
             });
-            return response
-              .status(201)
-              .send("Product transfered with success.");
+            response.status(201).send("Product transfered with success.");
           });
         }
 
