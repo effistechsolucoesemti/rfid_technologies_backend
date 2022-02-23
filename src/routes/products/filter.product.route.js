@@ -3,6 +3,6 @@ import { filterProduct } from "../../controllers/products/filter.product.control
 
 const filterProductsRoute = Router();
 
-filterProductsRoute.post("/test", filterProduct);
+filterProductsRoute.post("/filter", filterProduct);
 
 export default filterProductsRoute;

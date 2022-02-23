@@ -40,35 +40,6 @@ const Login = async (request, response) => {
         return response.status(409).end();
       }
     });
-
-    // return onValue(usersRef, (snapshot) => {
-    //   const userData = snapshot.forEach((childSnapshot) => {
-    //     const childData = childSnapshot.val();
-
-    //     console.log({ password, CDP: childData.password });
-    //     if (
-    //       childData.username === username &&
-    //       bcrypt.compare(password, childData.password)
-    //     ) {
-    //       console.log(bcrypt.compare(password, childData.password));
-
-    //       return response.status(200).send({
-    //         status: "success",
-    //         message: "User founded!",
-    //         id_token: childData.id_token,
-    //       });
-    //     }
-    //     return false;
-    //   });
-
-    //   console.log({ userData });
-
-    //   if (!userData) {
-    //     return response.status(409).end();
-    //   }
-
-    //   return;
-    // });
   } catch (error) {
     console.error(error);
   }

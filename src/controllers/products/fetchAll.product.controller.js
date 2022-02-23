@@ -39,7 +39,7 @@ const FetchAll = async (request, response, next) => {
       });
     });
   } catch (error) {
-    console.log("aaaaa");
+    console.log("Error: " + error);
   }
 };
 

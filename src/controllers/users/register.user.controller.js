@@ -7,6 +7,7 @@ import bcrypt from "bcrypt";
 import { handleEmptyUserFieldsVerification } from "../../utils/controller/emptyFieldsVerification.js";
 
 const RegisterUser = (request, response) => {
+  console.log("RegisterUser");
   const { username, password, email, company, telephone } = request.body;
 
   try {

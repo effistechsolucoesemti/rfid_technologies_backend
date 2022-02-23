@@ -4,10 +4,12 @@ import { ref, get, push, update, remove } from "@firebase/database";
 const RelocateProduct = async (request, response) => {
   console.log("triggered");
 
-  const { senderIdToken, productRfid, receiverIdToken } = request.body;
+  const { senderIdToken, productRfid, quantity, receiverIdToken } =
+    request.body;
 
   let senderKey = "";
   let sendedProductKey = "";
+  let sendedQuantity = "";
   let receiverKey = "";
 
   //Sended Product Data
@@ -22,299 +24,157 @@ const RelocateProduct = async (request, response) => {
   let sendedProductQuantity = "";
   let sendedProductPhoto = "";
 
-  console.log(senderIdToken + " - " + productRfid + " - " + receiverIdToken);
+  console.log(
+    senderIdToken +
+      " - " +
+      productRfid +
+      " - " +
+      quantity +
+      " - " +
+      receiverIdToken
+  );
   try {
-    const getUsers = get(ref(database, "users")).then((snapshot) => {
-      return snapshot.val();
+    const getUsers = await get(ref(database, "users")).then((users) => {
+      return users.val();
     });
 
-    const getSenderUser = getUsers.then((result) => {
-      const userGroup = Object.entries(result);
-
-      for (const [key, user] of userGroup) {
+    const getSenderUser = Object.entries(getUsers)
+      .filter(([key, user]) => {
         if (user.id_token === senderIdToken) {
           senderKey = key;
           return user;
         }
-      }
+      })
+      .flatMap(([key, user]) => {
+        return user;
+      });
+
+    if (!getSenderUser[0]) {
+      return response.status(409).send("Sender User does not exist!");
+    }
+
+    const product = getSenderUser.flatMap((dataValue) => {
+      return Object.entries(dataValue.table_of_products)
+        .filter(([key, product]) => {
+          if (product.rfid_tag === productRfid) {
+            //Assign Product Key
+            sendedProductKey = key;
+
+            //Assign Product Data
+            sendedProductName = product.product_name;
+            sendedProductAttributeSet = product.attribute_set;
+            sendedProductBrand = product.brand;
+            sendedProductCategory = product.category;
+            sendedProductGenre = product.genre;
+            sendedProductIdPiece = product.id_piece;
+            sendedProductRfidTag = product.rfid_tag;
+            sendedProductInternalNumber = product.internal_number;
+            sendedProductQuantity = product.quantity;
+            sendedProductPhoto = product.photo;
+
+            return product;
+          }
+        })
+        .flatMap(([key, product]) => {
+          return product;
+        });
     });
 
-    const getReceiverUser = getUsers.then((result) => {
-      const userGroup = Object.entries(result);
+    if (product <= 0) {
+      return response
+        .status(409)
+        .send("Please, verify if Sender User has any item registered!");
+    }
 
-      for (const [key, user] of userGroup) {
+    if (product[0].quantity <= 0) {
+      return response
+        .status(409)
+        .send(
+          "The selected product has 0 quantities available in the Sender User stock."
+        );
+    }
+
+    if (product[0].quantity < quantity) {
+      return response
+        .status(409)
+        .send("The selected product does not have this quantity available.");
+    }
+
+    const getReceiverUser = Object.entries(getUsers)
+      .filter(([key, user]) => {
         if (user.id_token === receiverIdToken) {
           receiverKey = key;
           return user;
         }
-      }
-    });
-
-    getSenderUser.then(async (senderUser) => {
-      //Check if Sender User exists
-      if (!senderUser) {
-        return response.status(409).send("Sender User does not exist!");
-      }
-
-      //Check if Sender User has any item available (Table of Products os created)
-      if (!senderUser.table_of_products) {
-        return response
-          .status(409)
-          .send("Please, verify if Sender User has any item registered!");
-      }
-
-      //Check if the selected product exists
-      const itemExists = Object.entries(senderUser.table_of_products)
-        .filter(([key, item]) => {
-          if (item.rfid_tag === productRfid) {
-            sendedProductKey = key;
-            sendedProductName = item.product_name;
-            sendedProductAttributeSet = item.attribute_set;
-            sendedProductBrand = item.brand;
-            sendedProductCategory = item.category;
-            sendedProductGenre = item.genre;
-            sendedProductIdPiece = item.id_piece;
-            sendedProductRfidTag = item.rfid_tag;
-            sendedProductInternalNumber = item.internal_number;
-            sendedProductQuantity = item.quantity;
-            sendedProductPhoto = item.photo;
-            return item;
-          }
-        })
-        .flatMap(([key, res]) => {
-          return res;
-        });
-
-      if (!itemExists.length > 0) {
-        return response
-          .status(409)
-          .send("The selected product does not exists!");
-      }
-
-      //Check if Sender User has any quantity available for transference
-      if (itemExists.quantity <= 0) {
-        return response
-          .status(409)
-          .send(
-            "The selected product has 0 quantities available in the Sender User stockc."
-          );
-      }
-
-      //Check if receiver user exists
-      const receiverUserExists = await getReceiverUser.then((user) => {
-        console.log({ getReceiverUser: user });
+      })
+      .flatMap(([key, user]) => {
         return user;
       });
 
-      console.log({ receiverUserExists });
+    if (!getReceiverUser[0]) {
+      return response.status(409).send("Receiver User does not exist!");
+    }
 
-      if (!receiverUserExists) {
-        return response.status(409).send("Receiver User does not exist!");
-      }
-
-      //Delete product from sender
-      remove(
-        ref(
-          database,
-          `users/${senderKey}/table_of_products/${sendedProductKey}`
-        )
-      ).then(() => {
-        //Push to Sender Table of Logs
-        push(ref(database, `users/${senderKey}/table_of_logs`), {
-          date: String(new Date().toISOString()),
-          operation: "transfered deleted",
-          product: sendedProductName,
-          state: {
-            attribute_set: {
-              previousState: sendedProductAttributeSet,
-              currentState: sendedProductAttributeSet,
-            },
-            brand: {
-              previousState: sendedProductBrand,
-              currentState: sendedProductBrand,
-            },
-            category: {
-              previousState: sendedProductCategory,
-              currentState: sendedProductCategory,
-            },
-            genre: {
-              previousState: sendedProductGenre,
-              currentState: sendedProductGenre,
-            },
-            id_piece: {
-              previousState: sendedProductIdPiece,
-              currentState: sendedProductIdPiece,
-            },
-            id_token: {
-              previousState: senderIdToken,
-              currentState: receiverIdToken,
-            },
-            internal_number: {
-              previousState: sendedProductInternalNumber,
-              currentState: sendedProductInternalNumber,
-            },
-            product_name: {
-              previousState: sendedProductName,
-              currentState: sendedProductName,
-            },
-            quantity: {
-              previousState: sendedProductQuantity,
-              currentState: sendedProductQuantity,
-            },
-            rfid_tag: {
-              previousState: sendedProductRfidTag,
-              currentState: sendedProductRfidTag,
-            },
+    //Update to Decrease Quantity
+    update(
+      ref(database, `users/${senderKey}/table_of_products/${sendedProductKey}`),
+      { quantity: sendedProductQuantity - quantity }
+    ).then(() => {
+      //Push to Sender Table of Logs
+      push(ref(database, `users/${senderKey}/table_of_logs`), {
+        date: String(new Date().toISOString()),
+        operation: "transfered deleted",
+        product: sendedProductName,
+        state: {
+          attribute_set: {
+            previousState: sendedProductAttributeSet,
+            currentState: sendedProductAttributeSet,
           },
-        });
+          brand: {
+            previousState: sendedProductBrand,
+            currentState: sendedProductBrand,
+          },
+          category: {
+            previousState: sendedProductCategory,
+            currentState: sendedProductCategory,
+          },
+          genre: {
+            previousState: sendedProductGenre,
+            currentState: sendedProductGenre,
+          },
+          id_piece: {
+            previousState: sendedProductIdPiece,
+            currentState: sendedProductIdPiece,
+          },
+          id_token: {
+            previousState: senderIdToken,
+            currentState: receiverIdToken,
+          },
+          internal_number: {
+            previousState: sendedProductInternalNumber,
+            currentState: sendedProductInternalNumber,
+          },
+          product_name: {
+            previousState: sendedProductName,
+            currentState: sendedProductName,
+          },
+          quantity: {
+            previousState: sendedProductQuantity,
+            currentState: sendedProductQuantity,
+          },
+          rfid_tag: {
+            previousState: sendedProductRfidTag,
+            currentState: sendedProductRfidTag,
+          },
+        },
       });
+    });
 
-      get(ref(database, `users/${receiverKey}/table_of_products`)).then(
-        (snapshot) => {
-          //If Receiver User Table of Product doesn't exist
-          if (!snapshot.val()) {
-            console.log("Creating Table of Products of Receiver User!");
-            //Push to Table of Products
-            push(ref(database, `users/${receiverKey}/table_of_products`), {
-              id_token: receiverIdToken,
-              internal_number: sendedProductInternalNumber,
-              rfid_tag: sendedProductRfidTag,
-              photo: sendedProductPhoto,
-              id_piece: sendedProductIdPiece,
-              product_name: sendedProductName,
-              genre: sendedProductGenre,
-              attribute_set: sendedProductAttributeSet,
-              category: sendedProductCategory,
-              brand: sendedProductCategory,
-              quantity: sendedProductQuantity,
-            });
-            //Push to Table of Logs
-            push(ref(database, `users/${receiverKey}/table_of_logs`), {
-              date: String(new Date().toISOString()),
-              operation: "transfered new",
-              product: sendedProductName,
-              state: {
-                attribute_set: {
-                  previousState: sendedProductAttributeSet,
-                  currentState: sendedProductAttributeSet,
-                },
-                brand: {
-                  previousState: sendedProductBrand,
-                  currentState: sendedProductBrand,
-                },
-                category: {
-                  previousState: sendedProductCategory,
-                  currentState: sendedProductCategory,
-                },
-                genre: {
-                  previousState: sendedProductGenre,
-                  currentState: sendedProductGenre,
-                },
-                id_piece: {
-                  previousState: sendedProductIdPiece,
-                  currentState: sendedProductIdPiece,
-                },
-                id_token: {
-                  previousState: senderIdToken,
-                  currentState: receiverIdToken,
-                },
-                internal_number: {
-                  previousState: sendedProductInternalNumber,
-                  currentState: sendedProductInternalNumber,
-                },
-                product_name: {
-                  previousState: sendedProductName,
-                  currentState: sendedProductName,
-                },
-                quantity: {
-                  previousState: sendedProductQuantity,
-                  currentState: sendedProductQuantity,
-                },
-                rfid_tag: {
-                  previousState: sendedProductRfidTag,
-                  currentState: sendedProductRfidTag,
-                },
-              },
-            });
-
-            return response
-              .status(201)
-              .send("Product transfered with success.");
-          }
-
-          //If Receiver User Table of Product exist
-          snapshot.forEach((childSnapshot) => {
-            //Check for item already registered and update it
-            const receiverProductKey = childSnapshot.key;
-            const receiverProductData = childSnapshot.val();
-
-            if (receiverProductData.rfid_tag === productRfid) {
-              update(
-                ref(
-                  database,
-                  `users/${receiverKey}/table_of_products/${receiverProductKey}`
-                ),
-                {
-                  quantity:
-                    receiverProductData.quantity + sendedProductQuantity,
-                }
-              ).then(() => {
-                //Push to Table of Logs
-                push(ref(database, `users/${receiverKey}/table_of_logs`), {
-                  date: String(new Date().toISOString()),
-                  operation: "transfered new",
-                  product: sendedProductName,
-                  state: {
-                    attribute_set: {
-                      previousState: sendedProductAttributeSet,
-                      currentState: sendedProductAttributeSet,
-                    },
-                    brand: {
-                      previousState: sendedProductBrand,
-                      currentState: sendedProductBrand,
-                    },
-                    category: {
-                      previousState: sendedProductCategory,
-                      currentState: sendedProductCategory,
-                    },
-                    genre: {
-                      previousState: sendedProductGenre,
-                      currentState: sendedProductGenre,
-                    },
-                    id_piece: {
-                      previousState: sendedProductIdPiece,
-                      currentState: sendedProductIdPiece,
-                    },
-                    id_token: {
-                      previousState: senderIdToken,
-                      currentState: receiverIdToken,
-                    },
-                    internal_number: {
-                      previousState: sendedProductInternalNumber,
-                      currentState: sendedProductInternalNumber,
-                    },
-                    product_name: {
-                      previousState: sendedProductName,
-                      currentState: sendedProductName,
-                    },
-                    quantity: {
-                      previousState: sendedProductQuantity,
-                      currentState: sendedProductQuantity,
-                    },
-                    rfid_tag: {
-                      previousState: sendedProductRfidTag,
-                      currentState: sendedProductRfidTag,
-                    },
-                  },
-                });
-              });
-
-              return response
-                .status(201)
-                .send("Product transfered with success.");
-            }
-          });
-
+    get(ref(database, `users/${receiverKey}/table_of_products`)).then(
+      (tableOfProduct) => {
+        //Check if Receiver User has a Table of Products
+        if (!tableOfProduct.exists()) {
+          //Create a NEW Table of Product if Receiver User doesnt have one
           push(ref(database, `users/${receiverKey}/table_of_products`), {
             id_token: receiverIdToken,
             internal_number: sendedProductInternalNumber,
@@ -326,7 +186,147 @@ const RelocateProduct = async (request, response) => {
             attribute_set: sendedProductAttributeSet,
             category: sendedProductCategory,
             brand: sendedProductCategory,
-            quantity: sendedProductQuantity,
+            quantity: quantity,
+          }).then(() => {
+            //Create a new Table of Logs
+            push(ref(database, `users/${receiverKey}/table_of_logs`), {
+              date: String(new Date().toISOString()),
+              operation: "transfered new",
+              product: sendedProductName,
+              state: {
+                attribute_set: {
+                  previousState: null,
+                  currentState: sendedProductAttributeSet,
+                },
+                brand: {
+                  previousState: null,
+                  currentState: sendedProductBrand,
+                },
+                category: {
+                  previousState: null,
+                  currentState: sendedProductCategory,
+                },
+                genre: {
+                  previousState: null,
+                  currentState: sendedProductGenre,
+                },
+                id_piece: {
+                  previousState: null,
+                  currentState: sendedProductIdPiece,
+                },
+                id_token: {
+                  previousState: null,
+                  currentState: receiverIdToken,
+                },
+                internal_number: {
+                  previousState: null,
+                  currentState: sendedProductInternalNumber,
+                },
+                product_name: {
+                  previousState: null,
+                  currentState: sendedProductName,
+                },
+                quantity: {
+                  previousState: null,
+                  currentState: sendedProductQuantity,
+                },
+                rfid_tag: {
+                  previousState: null,
+                  currentState: sendedProductRfidTag,
+                },
+              },
+            });
+            return response
+              .status(201)
+              .send("Product transfered with success.");
+          });
+        }
+
+        //If Receiver User Table of Products already created
+        const updatedProduct = tableOfProduct.forEach((product) => {
+          const receiverProductKey = product.key;
+          const receiverProductData = product.val();
+
+          if (receiverProductData.rfid_tag === productRfid) {
+            return update(
+              ref(
+                database,
+                `users/${receiverKey}/table_of_products/${receiverProductKey}`
+              ),
+              {
+                quantity:
+                  Number(receiverProductData.quantity) + Number(quantity),
+              }
+            ).then(() => {
+              push(ref(database, `users/${receiverKey}/table_of_logs`), {
+                date: String(new Date().toISOString()),
+                operation: "transfered new",
+                product: sendedProductName,
+                state: {
+                  attribute_set: {
+                    previousState: null,
+                    currentState: sendedProductAttributeSet,
+                  },
+                  brand: {
+                    previousState: null,
+                    currentState: sendedProductBrand,
+                  },
+                  category: {
+                    previousState: null,
+                    currentState: sendedProductCategory,
+                  },
+                  genre: {
+                    previousState: null,
+                    currentState: sendedProductGenre,
+                  },
+                  id_piece: {
+                    previousState: null,
+                    currentState: sendedProductIdPiece,
+                  },
+                  id_token: {
+                    previousState: null,
+                    currentState: receiverIdToken,
+                  },
+                  internal_number: {
+                    previousState: null,
+                    currentState: sendedProductInternalNumber,
+                  },
+                  product_name: {
+                    previousState: null,
+                    currentState: sendedProductName,
+                  },
+                  quantity: {
+                    previousState: null,
+                    currentState: sendedProductQuantity,
+                  },
+                  rfid_tag: {
+                    previousState: null,
+                    currentState: sendedProductRfidTag,
+                  },
+                },
+              });
+              return response
+                .status(201)
+                .send("Product transfered with success.");
+            });
+          }
+        });
+
+        console.log(updatedProduct);
+
+        if (!updatedProduct) {
+          push(ref(database, `users/${receiverKey}/table_of_products`), {
+            id_token: receiverIdToken,
+            internal_number: sendedProductInternalNumber,
+            rfid_tag: sendedProductRfidTag,
+            photo: sendedProductPhoto,
+            id_piece: sendedProductIdPiece,
+            product_name: sendedProductName,
+            genre: sendedProductGenre,
+            attribute_set: sendedProductAttributeSet,
+            category: sendedProductCategory,
+            brand: sendedProductCategory,
+            quantity: quantity,
           }).then(() => {
             push(ref(database, `users/${receiverKey}/table_of_logs`), {
               date: String(new Date().toISOString()),
@@ -334,53 +334,54 @@ const RelocateProduct = async (request, response) => {
               product: sendedProductName,
               state: {
                 attribute_set: {
-                  previousState: sendedProductAttributeSet,
+                  previousState: null,
                   currentState: sendedProductAttributeSet,
                 },
                 brand: {
-                  previousState: sendedProductBrand,
+                  previousState: null,
                   currentState: sendedProductBrand,
                 },
                 category: {
-                  previousState: sendedProductCategory,
+                  previousState: null,
                   currentState: sendedProductCategory,
                 },
                 genre: {
-                  previousState: sendedProductGenre,
+                  previousState: null,
                   currentState: sendedProductGenre,
                 },
                 id_piece: {
-                  previousState: sendedProductIdPiece,
+                  previousState: null,
                   currentState: sendedProductIdPiece,
                 },
                 id_token: {
-                  previousState: senderIdToken,
+                  previousState: null,
                   currentState: receiverIdToken,
                 },
                 internal_number: {
-                  previousState: sendedProductInternalNumber,
+                  previousState: null,
                   currentState: sendedProductInternalNumber,
                 },
                 product_name: {
-                  previousState: sendedProductName,
+                  previousState: null,
                   currentState: sendedProductName,
                 },
                 quantity: {
-                  previousState: sendedProductQuantity,
+                  previousState: null,
                   currentState: sendedProductQuantity,
                 },
                 rfid_tag: {
-                  previousState: sendedProductRfidTag,
+                  previousState: null,
                   currentState: sendedProductRfidTag,
                 },
               },
             });
           });
-
           return response.status(201).send("Product transfered with success.");
         }
-      );
-    });
+      }
+    );
+
+    /**/
   } catch (error) {
     console.log(error);
   }

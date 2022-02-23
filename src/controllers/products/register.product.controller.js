@@ -55,6 +55,7 @@ const RegisterProduct = async (request, response) => {
                   }
                 );
 
+                //Register a new log
                 push(ref(database, `users/${userKey}/table_of_logs`), {
                   date: String(new Date().toISOString()),
                   operation: "added",

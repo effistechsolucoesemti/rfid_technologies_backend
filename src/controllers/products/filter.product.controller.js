@@ -11,16 +11,19 @@ import {
 export const filterProduct = (request, response) => {
   console.log("CALLING FILTER PRODUCT METHOD");
 
-  const { user_key, id_token, selectedOptions, searchValue } = request.body;
+  const { user_key, id_token, selectedOption, searchValue } = request.body;
 
-  console.log({ reqBody: request.body }, { selectedOptions, searchValue });
+  console.log(
+    { reqBody: request.body },
+    { sendedOptions: selectedOption, searchValue }
+  );
 
   try {
     get(
       query(
         ref(database, `users/${user_key}/table_of_products/`),
         ...[
-          orderByChild(selectedOptions),
+          orderByChild(selectedOption),
           startAt(searchValue),
           endAt(searchValue + "\uf8ff"),
         ]

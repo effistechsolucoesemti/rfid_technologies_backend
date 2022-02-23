@@ -1,14 +1,5 @@
 import { database } from "../../services/firebase.js";
-import {
-  ref,
-  update,
-  get,
-  push,
-  query,
-  orderByValue,
-  orderByKey,
-  child,
-} from "@firebase/database";
+import { ref, update, get, push } from "@firebase/database";
 
 import { handleEmptyProductsFieldsVerification } from "../../utils/controller/emptyFieldsVerification.js";
 
@@ -23,7 +14,12 @@ export const UpdateProduct = async (request, response) => {
     current_internal_number,
     product_name,
     quantity,
-    ...remainder_attributes
+    genre,
+    category,
+    photo,
+    attribute_set,
+    brand,
+    id_piece,
   } = request.body;
 
   try {
@@ -39,7 +35,6 @@ export const UpdateProduct = async (request, response) => {
     if (emptyFields) {
       return;
     }
-    console.log({ internal_number, current_internal_number });
 
     return await get(ref(database, "users/")).then((snapshot) => {
       snapshot.forEach((childSnapshot) => {
@@ -57,7 +52,51 @@ export const UpdateProduct = async (request, response) => {
                 push(ref(database, `users/${userKey}/table_of_logs`), {
                   date: String(new Date().toISOString()),
                   operation: "updated",
-                  message: `Product ${product_name} was updated!`,
+                  // message: `Product ${product_name} was updated!`,
+
+                  product: userData.product_name,
+                  state: {
+                    attribute_set: {
+                      previousState: attribute_set,
+                      currentState: userData.attribute_set,
+                    },
+                    brand: {
+                      previousState: brand,
+                      currentState: userData.brand,
+                    },
+                    category: {
+                      previousState: category,
+                      currentState: userData.category,
+                    },
+                    genre: {
+                      previousState: genre,
+                      currentState: userData.genre,
+                    },
+                    id_piece: {
+                      previousState: id_piece,
+                      currentState: userData.id_piece,
+                    },
+                    id_token: {
+                      previousState: id_token,
+                      currentState: userData.id_token,
+                    },
+                    internal_number: {
+                      previousState: internal_number,
+                      currentState: userData.internal_number,
+                    },
+                    product_name: {
+                      previousState: product_name,
+                      currentState: userData.product_name,
+                    },
+                    quantity: {
+                      previousState: quantity,
+                      currentState: userData.quantity,
+                    },
+                    rfid_tag: {
+                      previousState: rfid_tag,
+                      currentState: userData.quantity,
+                    },
+                  },
                 });
 
                 return update(
@@ -71,7 +110,12 @@ export const UpdateProduct = async (request, response) => {
                     internal_number,
                     product_name,
                     quantity,
-                    ...remainder_attributes,
+                    genre,
+                    category,
+                    photo,
+                    attribute_set,
+                    brand,
+                    id_piece,
                   }
                 )
                   .then(() => {
@@ -87,7 +131,6 @@ export const UpdateProduct = async (request, response) => {
               }
 
               const productResult = results.forEach((product) => {
-                const productKey = product.key;
                 const productData = product.val();
 
                 //Verify if another product is registered and send error message
@@ -107,7 +150,49 @@ export const UpdateProduct = async (request, response) => {
               push(ref(database, `users/${userKey}/table_of_logs`), {
                 date: String(new Date().toISOString()),
                 operation: "updated",
-                message: `Product ${product_name} was updated!`,
+                product: userData.product_name,
+                state: {
+                  attribute_set: {
+                    previousState: attribute_set,
+                    currentState: userData.attribute_set,
+                  },
+                  brand: {
+                    previousState: brand,
+                    currentState: userData.brand,
+                  },
+                  category: {
+                    previousState: category,
+                    currentState: userData.category,
+                  },
+                  genre: {
+                    previousState: genre,
+                    currentState: userData.genre,
+                  },
+                  id_piece: {
+                    previousState: id_piece,
+                    currentState: userData.id_piece,
+                  },
+                  id_token: {
+                    previousState: id_token,
+                    currentState: userData.id_token,
+                  },
+                  internal_number: {
+                    previousState: internal_number,
+                    currentState: userData.internal_number,
+                  },
+                  product_name: {
+                    previousState: product_name,
+                    currentState: userData.product_name,
+                  },
+                  quantity: {
+                    previousState: quantity,
+                    currentState: userData.quantity,
+                  },
+                  rfid_tag: {
+                    previousState: rfid_tag,
+                    currentState: userData.quantity,
+                  },
+                },
               });
 
               return update(
@@ -121,7 +206,12 @@ export const UpdateProduct = async (request, response) => {
                   internal_number,
                   product_name,
                   quantity,
-                  ...remainder_attributes,
+                  genre,
+                  category,
+                  photo,
+                  attribute_set,
+                  brand,
+                  id_piece,
                 }
               )
                 .then(() => {
@@ -134,13 +224,6 @@ export const UpdateProduct = async (request, response) => {
                   console.log({ error });
                   throw new Error(error);
                 });
-
-              // if (!productResult) {
-              //   return response.status(400).send({
-              //     status: "failed",
-              //     message: "Another product is already registered!",
-              //   });
-              // }
             })
             .catch((error) => {
               console.log({ error });
@@ -235,4 +318,49 @@ export const updateProductQuantityByRFidTag = (request, response) => {
   } catch (error) {
     console.log({ error });
   }
+};
+
+export const updateTableByImport = async (request, response) => {
+  console.log("TRIGGERED");
+
+  const obj = request.body;
+
+  // console.log(obj.table_of_products);
+  Object.entries(obj.table_of_products).map(async ([key, value]) => {
+    let productKey = key;
+    const id_token = value.id_token;
+
+    let originalQuantity = "";
+
+    const userKey = await get(ref(database, "/users")).then((snapshot) => {
+      const userJSON = snapshot.toJSON();
+
+      const key = Object.entries(userJSON)
+        .filter(([key, user]) => {
+          if (user.id_token === id_token) {
+            return user.id_token;
+          }
+        })
+        .flatMap(([key, value]) => {
+          return key;
+        });
+
+      return key;
+    });
+
+    update(
+      ref(database, `users/${userKey[0]}/table_of_products/${productKey}`),
+      {
+        attribute_set: value.attribute_set,
+        brand: value.brand,
+        category: value.category,
+        genre: value.genre,
+        id_piece: value.id_piece,
+        internal_number: value.internal_number,
+        product_name: value.product_name,
+        quantity: value.quantity,
+        rfid_tag: value.rfid_tag,
+      }
+    );
+  });
 };
