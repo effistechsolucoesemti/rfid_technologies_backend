@@ -1,8 +1,6 @@
 import { database } from "../../services/firebase.js";
 import { ref, update, get, push } from "@firebase/database";
 
-import { csvStringToJson } from "convert-csv-to-json";
-
 import { handleEmptyProductsFieldsVerification } from "../../utils/controller/emptyFieldsVerification.js";
 
 export const UpdateProduct = async (request, response) => {
