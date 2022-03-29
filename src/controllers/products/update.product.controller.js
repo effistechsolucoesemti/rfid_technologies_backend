@@ -386,21 +386,23 @@ export const updateTableByImport = async (request, response) => {
     if (!getProducts) {
       console.log("Table of products not created - " + getProducts);
 
-      return Object.entries(objectFormatted).forEach(([key, value]) => {
+      Object.entries(objectFormatted).forEach(([key, value]) => {
         push(ref(database, `users/${userKey}/table_of_products`), {
-          product_name: Object.entries(value).at(0),
-          internal_number: Object.entries(value).at(1),
-          rfid_tag: Object.entries(value).at(2),
-          quantity: Object.entries(value).at(3),
+          product_name: Object.entries(value).at(0)[1],
+          internal_number: Object.entries(value).at(1)[1],
+          rfid_tag: Object.entries(value).at(2)[1],
+          quantity: Object.entries(value).at(3)[1],
 
-          attribute_set: Object.entries(value).at(4),
-          brand: Object.entries(value).at(5),
-          category: Object.entries(value).at(6),
-          genre: Object.entries(value).at(7),
-          id_piece: Object.entries(value).at(8),
+          attribute_set: Object.entries(value).at(4)[1],
+          brand: Object.entries(value).at(5)[1],
+          category: Object.entries(value).at(6)[1],
+          genre: Object.entries(value).at(7)[1],
+          id_piece: Object.entries(value).at(8)[1],
           id_token: user_id_token,
         });
       });
+
+      return response.status(201).send("Updated");
     }
 
     products = Object.entries(getProducts).map((product) => {
