@@ -1,6 +1,8 @@
 import { database } from "../../services/firebase.js";
 import { ref, update, get, push } from "@firebase/database";
 
+import { csvStringToJson } from "convert-csv-to-json";
+
 import { handleEmptyProductsFieldsVerification } from "../../utils/controller/emptyFieldsVerification.js";
 
 export const UpdateProduct = async (request, response) => {
@@ -321,46 +323,134 @@ export const updateProductQuantityByRFidTag = (request, response) => {
 };
 
 export const updateTableByImport = async (request, response) => {
-  console.log("TRIGGERED");
+  try {
+    console.log("CALLING UPDATE TABLE BY IMPORT");
+    const { file, user_id_token } = request.body;
 
-  const obj = request.body;
+    let products = [];
 
-  // console.log(obj.table_of_products);
-  Object.entries(obj.table_of_products).map(async ([key, value]) => {
-    let productKey = key;
-    const id_token = value.id_token;
+    if (!file) {
+      console.log({ b: file });
+      return response.status(409).send("Please, insert a valid file!");
+    }
 
-    let originalQuantity = "";
+    let fileSplited = String(file)
+      .trim()
+      .split("\r\n")
+      .map((elem) => {
+        return elem;
+      });
 
-    const userKey = await get(ref(database, "/users")).then((snapshot) => {
-      const userJSON = snapshot.toJSON();
+    let attributes = fileSplited[0].split(";");
+    let valuesArray = [];
 
-      const key = Object.entries(userJSON)
-        .filter(([key, user]) => {
-          if (user.id_token === id_token) {
-            return user.id_token;
-          }
-        })
-        .flatMap(([key, value]) => {
-          return key;
-        });
+    for (let index = 0; index < fileSplited.length; index++) {
+      if (index > 0) {
+        valuesArray.push(fileSplited[index].split(";"));
+      }
+    }
 
-      return key;
+    let objectFormatted = valuesArray.map((elem, firstIndex) => {
+      let mapped = attributes.map((att, index) => {
+        return Object.assign({}, { [att]: elem[index] });
+      });
+
+      return Object.assign({}, ...mapped);
     });
 
-    update(
-      ref(database, `users/${userKey[0]}/table_of_products/${productKey}`),
-      {
-        attribute_set: value.attribute_set,
-        brand: value.brand,
-        category: value.category,
-        genre: value.genre,
-        id_piece: value.id_piece,
-        internal_number: value.internal_number,
-        product_name: value.product_name,
-        quantity: value.quantity,
-        rfid_tag: value.rfid_tag,
+    // console.log("+++++");
+    // console.log(csvStringToJson(file));
+    // console.log("+++++");
+
+    let getUsers = await get(ref(database, "users/")).then((users) => {
+      return users.val();
+    });
+
+    let userKey = "";
+
+    Object.entries(getUsers).map(([key, user]) => {
+      if (user.id_token === user_id_token) {
+        userKey = key;
+
+        return;
       }
-    );
-  });
+    });
+
+    let getProducts = await get(
+      ref(database, `users/${userKey}/table_of_products`)
+    ).then((products) => {
+      return products.val();
+    });
+
+    //Check if Table of Products was created
+    if (!getProducts) {
+      console.log("Table of products not created - " + getProducts);
+
+      return Object.entries(objectFormatted).forEach(([key, value]) => {
+        push(ref(database, `users/${userKey}/table_of_products`), {
+          product_name: Object.entries(value).at(0),
+          internal_number: Object.entries(value).at(1),
+          rfid_tag: Object.entries(value).at(2),
+          quantity: Object.entries(value).at(3),
+
+          attribute_set: Object.entries(value).at(4),
+          brand: Object.entries(value).at(5),
+          category: Object.entries(value).at(6),
+          genre: Object.entries(value).at(7),
+          id_piece: Object.entries(value).at(8),
+          id_token: user_id_token,
+        });
+      });
+    }
+
+    products = Object.entries(getProducts).map((product) => {
+      return product;
+    });
+
+    // console.log(products);
+
+    objectFormatted.forEach((object) => {
+      let wasUpdated = products.find(([key, value]) => {
+        if (Object.entries(object).at(2)[1] === value.rfid_tag) {
+          //RFidTag === rfid_tag
+          return update(
+            ref(database, `users/${userKey}/table_of_products/${key}`),
+            {
+              product_name: Object.entries(object).at(0)[1] + "11111",
+              internal_number: Object.entries(object).at(1)[1],
+              rfid_tag: Object.entries(object).at(2)[1],
+              quantity: Object.entries(object).at(3)[1],
+
+              attribute_set: Object.entries(object).at(4)[1],
+              brand: Object.entries(object).at(5)[1],
+              category: Object.entries(object).at(6)[1],
+              genre: Object.entries(object).at(7)[1],
+              id_piece: Object.entries(object).at(8)[1],
+              id_token: user_id_token,
+            }
+          );
+        }
+      });
+
+      if (!wasUpdated) {
+        push(ref(database, `users/${userKey}/table_of_products`), {
+          product_name: Object.entries(object).at(0)[1],
+          internal_number: Object.entries(object).at(1)[1],
+          rfid_tag: Object.entries(object).at(2)[1],
+          quantity: Object.entries(object).at(3)[1],
+
+          attribute_set: Object.entries(object).at(4)[1],
+          brand: Object.entries(object).at(5)[1],
+          category: Object.entries(object).at(6)[1],
+          genre: Object.entries(object).at(7)[1],
+          id_piece: Object.entries(object).at(8)[1],
+          id_token: user_id_token,
+        });
+      }
+    });
+
+    return response.status(201).send("Updated");
+  } catch (error) {
+    console.log(error);
+  }
 };
